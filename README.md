@@ -29,20 +29,6 @@ The page covers:
 
 We fine-tune **Mistral-7B with QLoRA** on **five English meeting corpora** (AMI, ICSI, ELITR, EuroParlMin, MeetingBank) whose sizes span more than two orders of magnitude. By building **balanced** and **natural** token mixtures at **matched budgets** (2–32M tokens), we separate the effect of token *distribution* from data *volume*. Headline results: (1) balancing **redistributes** quality — it lifts the three data-scarce minority domains and slightly lowers the two majority domains, rather than adding quality uniformly; (2) the minority gap **stays open** across the whole budget ladder; (3) pruning conversational filler removes **6.8%** of tokens at no measurable cost; (4) **tokens, not examples**, are the right unit of balancing; (5) the pattern **replicates** on Llama-3.2-3B.
 
-## Running locally
-
-No build step. Clone and open `index.html`, or serve the folder:
-
-```bash
-python3 -m http.server 8000
-# then open http://localhost:8000
-```
-
-All content lives in `assets/data.js`; the page renders it with vanilla JS in `assets/app.js`. Chart.js is bundled locally (`assets/chart.umd.min.js`), so the page has no runtime dependencies.
-
-## Deploying on GitHub Pages
-
-Push to a repository named `domain-balancing`, then enable **Settings → Pages → Deploy from branch → main → /(root)**. The site will be served at `https://<username>.github.io/domain-balancing/`.
 
 ## Citation
 
