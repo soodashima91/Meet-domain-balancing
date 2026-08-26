@@ -173,7 +173,7 @@ const DATA = {
     venue: "INLG 2026",
     arxiv: "https://arxiv.org/abs/2608.15935",
     hf: "https://huggingface.co/soodashima91/meeting-summarization-domain-balancing",
-    github: "https://github.com/soodashima91/domain-balancing",
+    github: "https://soodashima91.github.io/Meet-domain-balancing/",
     email: "sood-a1@ulster.ac.uk"
   }
 };
