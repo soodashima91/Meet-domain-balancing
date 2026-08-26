@@ -4,7 +4,7 @@
 
 Sood, A., Gardiner, B., & Condell, J. (2026). *Proceedings of the 19th International Natural Language Generation Conference (INLG).*
 
-📄 **[Read on arXiv](https://arxiv.org/abs/2608.15935)** · 🤗 **[Hugging Face](https://huggingface.co/soodashima91/meeting-summarization-domain-balancing)** · 🌐 **[Interactive companion site](https://soodashima91.github.io/domain-balancing/)**
+📄 **[Read on arXiv](https://arxiv.org/abs/2608.15935)** · 🤗 **[Hugging Face](https://huggingface.co/soodashima91/meeting-summarization-domain-balancing)** · 🌐 **[Interactive companion site](https://soodashima91.github.io/Meet-domain-balancing/)**
 
 ---
 
