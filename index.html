@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domain Balancing — Token distribution vs data volume in meeting summarisation</title>
+<meta name="description" content="Interactive companion to Sood, Gardiner & Condell (INLG 2026): does a balanced training mixture help because of token distribution, or just data volume? A controlled study across five meeting corpora.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="assets/chart.umd.min.js"></script>
+<script src="assets/data.js" defer></script>
+<script src="assets/app.js" defer></script>
+<style>
+:root{
+  --ink:#12181f;          /* near-black slate */
+  --ink-soft:#5a6672;
+  --bg:#eef1f4;           /* cool paper */
+  --bg-line:#dbe1e8;
+  --card:#ffffff;
+  --balanced:#2563a8;     /* balanced allocation — blue (matches the paper) */
+  --balanced-soft:#e3edf7;
+  --natural:#d98a2b;      /* natural allocation — amber (matches the paper) */
+  --natural-soft:#f8ecdb;
+  --minority:#2563a8;     /* minority domains carry the balanced accent */
+  --majority:#8792a0;
+  --ok:#2f7d5b;
+  --radius:12px;
+  --maxw:1080px;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Space Grotesk',system-ui,sans-serif;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--balanced);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:'Newsreader',serif;line-height:1.08;margin:0;font-weight:600}
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--balanced);font-weight:500}
+
+/* ---------- top bar ---------- */
+.nav{position:sticky;top:0;z-index:40;background:rgba(238,241,244,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--bg-line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:58px}
+.brand{font-family:'Space Grotesk';font-weight:700;font-size:1rem;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.brand .dot{width:11px;height:11px;border-radius:3px;background:linear-gradient(135deg,var(--balanced) 50%,var(--natural) 50%)}
+.navlinks{display:flex;gap:22px;font-size:.86rem}
+.navlinks a{color:var(--ink-soft)}
+.navlinks a:hover{color:var(--ink);text-decoration:none}
+.ghbtn{border:1px solid var(--ink);border-radius:8px;padding:6px 14px;font-size:.8rem;color:var(--ink);font-weight:500}
+.ghbtn:hover{background:var(--ink);color:var(--bg);text-decoration:none}
+@media(max-width:820px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:74px 0 46px}
+.hero .eyebrow{margin-bottom:18px}
+.hero h1{font-size:clamp(2.2rem,5.4vw,3.8rem);font-weight:600;letter-spacing:-.015em;max-width:20ch}
+.hero .q{font-family:'Newsreader',serif;font-style:italic;font-size:clamp(1.15rem,2.6vw,1.5rem);color:var(--ink);max-width:34ch;margin:22px 0 0;line-height:1.35}
+.hero .lede{font-size:1.08rem;color:var(--ink-soft);max-width:60ch;margin:20px 0 28px}
+.authors{font-size:.92rem;color:var(--ink-soft)}
+.authors b{color:var(--ink);font-weight:600}
+.venue{display:inline-block;margin-top:10px;font-family:var(--mono);font-size:.76rem;color:var(--balanced);border:1px solid var(--balanced);border-radius:6px;padding:3px 9px}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:9px;font-weight:600;font-size:.92rem;border:1px solid transparent;cursor:pointer}
+.btn-primary{background:var(--ink);color:var(--bg)}
+.btn-primary:hover{background:#000;text-decoration:none}
+.btn-ghost{border-color:var(--ink);color:var(--ink)}
+.btn-ghost:hover{background:var(--ink);color:var(--bg);text-decoration:none}
+
+/* ---------- allocation signature (balanced vs natural bars) ---------- */
+.signature{margin-top:52px;background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:26px 26px 22px}
+.signature h4{font-family:var(--mono);font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 4px;font-weight:500}
+.sig-sub{font-size:.86rem;color:var(--ink-soft);margin:0 0 20px}
+.allocrow{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.allocrow .rl{font-family:var(--mono);font-size:.78rem;width:78px;flex:none;color:var(--ink)}
+.allocrow .rl small{display:block;color:var(--ink-soft);font-size:.68rem;letter-spacing:.02em}
+.bar{flex:1;display:flex;height:34px;border-radius:7px;overflow:hidden;border:1px solid var(--bg-line)}
+.seg{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.68rem;color:#fff;white-space:nowrap;overflow:hidden}
+.seg.faint{color:rgba(255,255,255,.0)}
+.sig-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);font-size:.72rem;color:var(--ink-soft)}
+.sig-legend span{display:inline-flex;align-items:center;gap:6px}
+.sig-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.sig-note{font-size:.84rem;color:var(--ink-soft);margin:16px 0 0;padding-left:13px;border-left:2px solid var(--natural)}
+
+/* ---------- section scaffolding ---------- */
+section{padding:58px 0;border-top:1px solid var(--bg-line)}
+.sec-head{max-width:62ch;margin-bottom:32px}
+.sec-head h2{font-size:clamp(1.7rem,4vw,2.4rem);font-weight:600;letter-spacing:-.01em;margin:10px 0}
+.sec-head p{color:var(--ink-soft);font-size:1.02rem}
+
+/* ---------- confound callout ---------- */
+.confound{background:var(--ink);color:var(--bg);border-radius:16px;padding:34px}
+.confound .eyebrow{color:var(--natural)}
+.confound .lead{font-family:'Newsreader',serif;font-size:clamp(1.3rem,3vw,1.8rem);line-height:1.3;margin:12px 0 16px;color:#fff}
+.confound p{color:rgba(238,241,244,.76);max-width:66ch;font-size:1rem;margin:0}
+
+/* ---------- stat band ---------- */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:22px 18px}
+.stat .num{font-family:'Newsreader',serif;font-weight:600;font-size:2rem;letter-spacing:-.02em;line-height:1}
+.stat .lab{font-size:.82rem;color:var(--ink-soft);margin-top:8px}
+
+/* ---------- pipeline ---------- */
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+@media(max-width:900px){.pipeline{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.pipeline{grid-template-columns:1fr}}
+.pstage{background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:18px;position:relative}
+.pstage .pnum{font-family:var(--mono);font-size:.78rem;color:#fff;background:var(--ink);width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:500}
+.pstage h4{font-family:'Newsreader',serif;font-weight:600;font-size:1.08rem;margin:12px 0 7px}
+.pstage p{font-size:.83rem;color:var(--ink-soft);margin:0;line-height:1.5}
+
+/* ---------- findings ---------- */
+.findings{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:760px){.findings{grid-template-columns:1fr}}
+.finding{background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:24px;transition:transform .15s,box-shadow .15s}
+.finding:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(18,24,31,.09)}
+.finding .fn{font-family:var(--mono);font-size:.72rem;color:var(--balanced);letter-spacing:.1em;display:flex;justify-content:space-between}
+.finding .fn .tag{color:var(--ink-soft)}
+.finding h3{font-size:1.18rem;font-weight:600;margin:12px 0 10px;line-height:1.25}
+.finding .ans{font-weight:600;font-size:1rem;color:var(--ink);padding-left:13px;border-left:3px solid var(--balanced)}
+.finding .det{font-size:.9rem;color:var(--ink-soft);margin-top:12px}
+.finding.wide{grid-column:1 / -1}
+
+/* ---------- explorer ---------- */
+.explorer{background:var(--ink);color:var(--bg);border-radius:18px;padding:32px}
+.explorer .eyebrow{color:var(--natural)}
+.explorer h2{color:#fff}
+.explorer .intro{color:rgba(238,241,244,.76);max-width:60ch;margin-top:10px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 10px}
+.tab{font-family:var(--mono);font-size:.8rem;padding:8px 14px;border-radius:8px;border:1px solid rgba(238,241,244,.24);background:transparent;color:var(--bg);cursor:pointer;transition:.15s}
+.tab:hover{border-color:var(--natural)}
+.tab.active{background:var(--bg);color:var(--ink);border-color:var(--bg);font-weight:500}
+.tab .role{font-size:.66rem;opacity:.7;margin-left:6px}
+.toggle{display:flex;gap:8px;margin:6px 0 18px}
+.mtoggle{font-family:var(--mono);font-size:.74rem;padding:6px 12px;border-radius:7px;border:1px solid rgba(238,241,244,.24);background:transparent;color:var(--bg);cursor:pointer}
+.mtoggle.active{background:var(--natural);color:var(--ink);border-color:var(--natural);font-weight:500}
+.chart-shell{background:rgba(238,241,244,.05);border:1px solid rgba(238,241,244,.14);border-radius:12px;padding:20px;min-height:340px}
+.chart-shell canvas{max-height:320px}
+.chart-note{font-size:.88rem;color:rgba(238,241,244,.74);margin-top:16px;padding-left:13px;border-left:2px solid var(--natural)}
+
+/* ---------- corpora table ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--bg-line);border-radius:var(--radius);background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:560px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--bg-line)}
+th{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;background:var(--bg)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--balanced-soft)}
+.pill{font-family:var(--mono);font-size:.7rem;padding:2px 8px;border-radius:5px;font-weight:500}
+.pill.minority{background:var(--balanced-soft);color:var(--balanced)}
+.pill.majority{background:#eceef1;color:var(--majority)}
+
+/* ---------- RQ4 unit box ---------- */
+.unitbox{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.unitbox{grid-template-columns:1fr}}
+.ucard{background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:22px}
+.ucard .uc{font-family:var(--mono);font-size:.74rem;color:var(--ink-soft);letter-spacing:.06em}
+.ucard .uv{font-family:'Newsreader',serif;font-weight:600;font-size:2.1rem;margin:8px 0 2px}
+.ucard .um{font-size:.86rem;color:var(--ink-soft)}
+.ucard.up{border-left:3px solid var(--natural)}
+.ucard.down{border-left:3px solid var(--balanced)}
+
+/* ---------- RQ5 replication ---------- */
+.rq5grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+@media(max-width:760px){.rq5grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){.rq5grid{grid-template-columns:1fr}}
+.r5{background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:16px;text-align:center}
+.r5 .d{font-family:var(--mono);font-size:.8rem;font-weight:500;margin-bottom:10px}
+.r5 .g{font-family:'Newsreader',serif;font-size:1.15rem;font-weight:600;line-height:1.2}
+.r5 .g small{display:block;font-family:var(--mono);font-size:.64rem;color:var(--ink-soft);font-weight:400;margin-top:2px}
+.r5 .pos{color:var(--balanced)}
+.r5 .neg{color:var(--natural)}
+
+/* ---------- evaluation ---------- */
+.metricgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:760px){.metricgrid{grid-template-columns:1fr}}
+.metric{background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:20px}
+.metric .mk{font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:5px;background:var(--balanced-soft);color:var(--balanced);display:inline-block;margin-bottom:12px}
+.metric .mk.rb{background:#e8f2ec;color:var(--ok)}
+.metric h4{font-family:'Newsreader',serif;font-weight:600;font-size:1.05rem;margin:0 0 8px}
+.metric p{font-size:.86rem;color:var(--ink-soft);margin:0}
+.aggnote{background:var(--card);border:1px solid var(--bg-line);border-left:3px solid var(--ink);border-radius:var(--radius);padding:22px;margin-top:16px;font-size:.95rem;color:var(--ink)}
+.valbox{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;background:var(--card);border:1px solid var(--bg-line);border-radius:var(--radius);padding:26px;margin-top:16px}
+@media(max-width:620px){.valbox{grid-template-columns:1fr;gap:14px}}
+.valstat{text-align:center;padding-right:26px;border-right:1px solid var(--bg-line)}
+@media(max-width:620px){.valstat{border-right:none;border-bottom:1px solid var(--bg-line);padding:0 0 14px}}
+.valstat .num{font-family:'Newsreader',serif;font-weight:600;font-size:2rem;color:var(--ok);line-height:1}
+.valstat .lab{font-size:.76rem;color:var(--ink-soft);margin-top:8px}
+.valbox p{font-size:.92rem;color:var(--ink-soft);margin:0}
+
+/* ---------- takeaways ---------- */
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:34px}
+@media(max-width:760px){.twocol{grid-template-columns:1fr;gap:26px}}
+.colh{font-size:1.6rem;font-weight:600;margin:10px 0 16px}
+.ticklist{list-style:none;padding:0;margin:0}
+.ticklist li{font-size:.94rem;color:var(--ink-soft);padding:11px 0 11px 28px;position:relative;border-bottom:1px solid var(--bg-line)}
+.ticklist li:last-child{border-bottom:none}
+.ticklist.plus li::before{content:"→";position:absolute;left:0;color:var(--balanced);font-weight:700}
+.ticklist.minus li::before{content:"—";position:absolute;left:0;color:var(--natural);font-weight:700}
+
+/* ---------- footer ---------- */
+footer{background:var(--ink);color:var(--bg);padding:54px 0 40px}
+footer h2{color:#fff;font-size:1.7rem;font-weight:600}
+footer .cite{font-family:var(--mono);font-size:.82rem;color:rgba(238,241,244,.72);background:rgba(238,241,244,.06);border:1px solid rgba(238,241,244,.14);border-radius:10px;padding:16px 18px;margin-top:20px;line-height:1.7;overflow-x:auto}
+footer a{color:var(--natural)}
+.foot-links{display:flex;gap:20px;flex-wrap:wrap;margin-top:22px;font-size:.9rem}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+:focus-visible{outline:2px solid var(--balanced);outline-offset:3px}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span>Domain&nbsp;Balancing</div>
+    <div class="navlinks">
+      <a href="#question">The question</a>
+      <a href="#method">Method</a>
+      <a href="#findings">Findings</a>
+      <a href="#explorer">Explore</a>
+      <a href="#eval">Evaluation</a>
+      <a href="#cite">Cite</a>
+    </div>
+    <a class="ghbtn" id="gh-nav" target="_blank" rel="noopener">View on GitHub</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow reveal">INLG 2026 · Controlled study</div>
+    <h1 class="reveal">Token distribution versus data volume</h1>
+    <p class="q reveal">When a balanced training mixture helps, is it the distribution of tokens across domains — or just the volume of data seen?</p>
+    <p class="lede reveal">A controlled study across <b>five imbalanced meeting corpora</b>. Holding data volume fixed and varying only the allocation, we show that balancing <b>redistributes</b> summarisation quality across domains rather than adding it.</p>
+    <p class="authors reveal" id="authors"></p>
+    <div class="reveal"><span class="venue" id="venue"></span></div>
+    <div class="hero-cta reveal">
+      <a class="btn btn-primary" href="#explorer">Explore the budget ladder ↓</a>
+      <a class="btn btn-ghost" id="arxiv-btn" target="_blank" rel="noopener">Read on arXiv</a>
+    </div>
+
+    <!-- Allocation signature: balanced vs natural across five domains -->
+    <div class="signature reveal">
+      <h4>The core manipulation · share of a fixed token budget</h4>
+      <p class="sig-sub">Two mixtures, same budget. Balanced gives every corpus an equal share; natural follows native size — so two corpora take almost everything.</p>
+      <div id="alloc-bars"></div>
+      <div class="sig-legend" id="alloc-legend"></div>
+      <p class="sig-note">Under natural allocation, the three data-scarce domains share just 1–2% of every budget. That single fact drives most of the paper.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ---------- THE QUESTION ---------- -->
+<section id="question">
+  <div class="wrap">
+    <div class="confound reveal">
+      <div class="eyebrow">The confound</div>
+      <p class="lead" id="confound-lead"></p>
+      <p id="confound-body"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- STAT BAND ---------- -->
+<section id="scope">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The setup</div>
+      <h2>One model, five domains, a matched budget</h2>
+      <p>Five English meeting corpora spanning more than two orders of magnitude in size, jointly fine-tuned on a single model — the imbalance that real multi-domain deployments face.</p>
+    </div>
+    <div class="stats" id="stat-band"></div>
+  </div>
+</section>
+
+<!-- ---------- METHOD ---------- -->
+<section id="method">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The pipeline</div>
+      <h2>How the study isolates distribution</h2>
+      <p>Every mixture shares the same budget, prompt, tokeniser, and seed. That shared construction is what lets a comparison at a matched budget isolate one factor at a time.</p>
+    </div>
+    <div class="pipeline reveal" id="pipeline"></div>
+  </div>
+</section>
+
+<!-- ---------- FINDINGS ---------- -->
+<section id="findings">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Five research questions</div>
+      <h2>What the study found</h2>
+      <p>Each question isolates one variable — distribution, budget, pruning, the unit of balancing, and model scale — read per domain rather than through a single aggregate.</p>
+    </div>
+    <div class="findings" id="findings-grid"></div>
+  </div>
+</section>
+
+<!-- ---------- EXPLORER ---------- -->
+<section id="explorer">
+  <div class="wrap">
+    <div class="explorer reveal">
+      <div class="eyebrow">Interactive · RQ2</div>
+      <h2>The budget ladder, per domain</h2>
+      <p class="intro">Balanced (blue) versus natural (amber) across the 2→32M token ladder. Switch corpus and metric. On the three minority domains the gap stays open at every budget; on the two majority domains the two schemes nearly meet.</p>
+      <div class="tabs" id="corpus-tabs"></div>
+      <div class="toggle" id="metric-toggle"></div>
+      <div class="chart-shell"><canvas id="ladderChart"></canvas></div>
+      <div class="chart-note" id="ladder-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- CORPORA ---------- -->
+<section id="corpora">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The corpora</div>
+      <h2>Five very different meetings</h2>
+      <p>From tightly structured parliamentary debate to sprawling academic brainstorms. The three minority domains are where balancing has its largest effect.</p>
+    </div>
+    <div class="tablewrap reveal">
+      <table id="corpora-table">
+        <thead><tr><th>Corpus</th><th>Domain</th><th>Genre</th><th>Role</th><th>Note</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- RQ4: UNIT OF BALANCING ---------- -->
+<section id="unit">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">RQ4 · The unit matters</div>
+      <h2>Balancing by tokens, not by examples</h2>
+      <p id="unit-note"></p>
+    </div>
+    <div class="unitbox reveal" id="unit-box"></div>
+  </div>
+</section>
+
+<!-- ---------- RQ5: REPLICATION ---------- -->
+<section id="replication">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">RQ5 · Generalisation</div>
+      <h2>The same pattern on a smaller model</h2>
+      <p>The balanced−natural gap per dataset, averaged over the shared budgets. Positive (blue) favours balancing on the minority domains; negative (amber) is the majority cost. The sign agrees on every dataset for both Mistral-7B and Llama-3.2-3B.</p>
+    </div>
+    <div class="rq5grid reveal" id="rq5-grid"></div>
+  </div>
+</section>
+
+<!-- ---------- EVALUATION ---------- -->
+<section id="eval">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">How minutes were judged</div>
+      <h2>Automatic metrics and a fact-level judge</h2>
+      <p>Every result is read per domain, then aggregated two ways — because a single average hides exactly the effect the study is about.</p>
+    </div>
+    <div class="metricgrid reveal" id="metric-grid"></div>
+    <div class="aggnote reveal" id="agg-note"></div>
+    <div class="valbox reveal">
+      <div class="valstat">
+        <div class="num" id="kappa-num"></div>
+        <div class="lab">Inter-annotator<br>agreement (Cohen's κ)</div>
+      </div>
+      <p id="val-caption"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- TAKEAWAYS ---------- -->
+<section id="takeaways">
+  <div class="wrap">
+    <div class="twocol">
+      <div class="reveal">
+        <div class="eyebrow">For practitioners</div>
+        <h2 class="colh">When to balance</h2>
+        <ul class="ticklist plus" id="practitioner"></ul>
+      </div>
+      <div class="reveal">
+        <div class="eyebrow">Honest about the edges</div>
+        <h2 class="colh">Limitations</h2>
+        <ul class="ticklist minus" id="limitations"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- FOOTER ---------- -->
+<footer id="cite">
+  <div class="wrap">
+    <div class="reveal">
+      <h2>Cite this work</h2>
+      <div class="cite"><pre id="bibtex" style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit"></pre></div>
+      <div class="foot-links" id="foot-links"></div>
+      <p style="margin-top:26px;font-size:.8rem;color:rgba(238,241,244,.5)">
+        This page is an interactive companion to the paper. All figures are drawn from the published tables and figures.
+      </p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
